@@ -1,7 +1,7 @@
 // Service worker : met toute l'application en cache pour un usage hors connexion.
 // Pensez à incrémenter VERSION à chaque déploiement.
 
-const VERSION = "v1";
+const VERSION = "v2";
 const CACHE = `fallout-companion-${VERSION}`;
 
 const ASSETS = [

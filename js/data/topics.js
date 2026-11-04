@@ -221,7 +221,7 @@ export const TOPICS = [
         ["Les inactifs se réveillent", "Les ennemis de ce type face cachée se retournent : ils sont actifs, mais **ne bougent pas** cette fois-ci."],
         ["Défaussez la carte", "Puis le premier joueur commence la manche suivante."],
       ] },
-      { t: "more", title: "Égalités et cas particuliers", blocks: [
+      { t: "more", title: "Égalités et cas particuliers", i: "scale", blocks: [
         { t: "bullets", items: [
           "Deux survivants aussi proches → l'ennemi vise celui qui a le **moins de PV restants**, puis celui qui joue **le plus tôt** dans l'ordre du tour.",
           "Plusieurs ennemis attaquent le même survivant → **il choisit** l'ordre des combats.",
@@ -496,8 +496,8 @@ export const TOPICS = [
 export const TOPIC_BY_ID = Object.fromEntries(TOPICS.map((t) => [t.id, t]));
 
 export const TOPIC_GROUPS = [
-  ["tour", "Le tour de jeu"],
-  ["jeu", "Combat & progression"],
-  ["objets", "Cartes & objets"],
-  ["partie", "La partie"],
+  ["tour", "Le tour de jeu", "round"],
+  ["jeu", "Combat & progression", "fight"],
+  ["objets", "Cartes & objets", "bag"],
+  ["partie", "La partie", "map"],
 ];

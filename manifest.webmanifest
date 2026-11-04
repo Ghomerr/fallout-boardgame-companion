@@ -3,7 +3,7 @@
   "short_name": "Fallout JdP",
   "description": "Aide de jeu en français pour Fallout : le jeu de plateau.",
   "lang": "fr",
-  "start_url": "./#/",
+  "start_url": "./",
   "scope": "./",
   "display": "standalone",
   "orientation": "any",

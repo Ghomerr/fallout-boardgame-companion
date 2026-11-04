@@ -198,6 +198,17 @@ kbd, .mono { font-family: var(--font-mono); }
 
 .section-title { display: flex; align-items: center; gap: 10px; }
 .section-title::after { content: ""; flex: 1; height: 1px; background: var(--line); }
+.card-title { display: flex; align-items: center; gap: 10px; }
+
+/* Pastille d'icône devant les titres */
+.h-ico {
+  display: inline-grid; place-items: center; flex: none;
+  width: 30px; height: 30px; border-radius: 9px;
+  background: var(--surface-3); border: 1px solid var(--line); color: var(--green);
+  box-shadow: 0 0 10px rgba(108,245,143,.08);
+}
+.h-ico .gi, .h-ico .ui { width: 18px; height: 18px; vertical-align: 0; }
+.eyebrow .ui, .eyebrow .gi { width: 14px; height: 14px; vertical-align: -2px; }
 
 .link-list { display: grid; gap: 10px; }
 .link-card {
@@ -292,8 +303,9 @@ details.more > summary {
   font: 600 .95rem var(--font-head); letter-spacing: .04em; text-transform: uppercase; color: var(--green);
 }
 details.more > summary::-webkit-details-marker { display: none; }
-details.more > summary .ui { transition: transform .2s; margin-left: auto; }
-details.more[open] > summary .ui { transform: rotate(90deg); }
+details.more > summary > .ui { transition: transform .2s; margin-left: auto; }
+details.more[open] > summary > .ui { transform: rotate(90deg); }
+details.more > summary .h-ico { width: 28px; height: 28px; }
 details.more > .inner { padding: 0 14px 14px; }
 details.more > .inner > * + * { margin-top: 10px; }
 

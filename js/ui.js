@@ -2,7 +2,7 @@
 
 import { GAME_ICONS } from "./game-icons.js";
 import { UI_ICONS } from "./icons-ui.js";
-import { state, isCoop } from "./store.js";
+import { state, isCoop, isOpen } from "./store.js";
 
 /* ---------------------------------------------------------------- Icônes */
 
@@ -24,6 +24,33 @@ export function ui(name, cls = "") {
 export const icon = (name, cls = "") => (GAME_ICONS[name] ? gi(name, cls) : ui(name, cls));
 
 const ICON_CLASS = { hit: "c-hit", star: "c-star", shield: "c-shield", radiation: "c-amber" };
+
+/* ---------------------------------------------------------------- Titres illustrés */
+
+// Pictogramme déduit du libellé d'un titre, quand aucun n'est indiqué explicitement.
+const TITLE_ICONS = [
+  [/voir aussi/, "link"], [/retenir|astuce/, "pin"], [/exemple/, "eye"],
+  [/xp|niveau/, "xp"], [/victoire si|gagner|victoire/, "trophy"], [/défaite|mour|mort|tué/, "skull"],
+  [/étape|déroul|ordre/, "list"], [/dégât|pv|soin/, "heart"],
+  [/type/, "layers"], [/capacit/, "aggressive"], [/actif/, "eye"], [/ennemi/, "human"],
+  [/aptitude|perk/, "sparkle"], [/s\.p\.e\.c\.i\.a\.l/, "S"], [/inventaire/, "bag"],
+  [/épuis/, "round"], [/paquet|carte|résultat/, "card"], [/capsule/, "caps"], [/influence/, "influence"],
+  [/loyaut/, "shield"], [/faction/, "star"], [/fin de partie|fin brutale/, "flag"],
+  [/début/, "flag"], [/pendant/, "clock"], [/action/, "play"], [/objectif/, "flag"],
+  [/règle|variante/, "book"], [/coop|équipe/, "users"], [/install/, "install"], [/source/, "book"], [/donnée/, "data"],
+];
+export function guessIcon(text = "") {
+  const t = text.toLowerCase();
+  return (TITLE_ICONS.find(([re]) => re.test(t)) || [, "sparkle"])[1];
+}
+
+/** Pastille d'icône placée devant un titre. */
+export const hIcon = (name) => `<span class="h-ico" aria-hidden="true">${icon(name, ICON_CLASS[name] || "")}</span>`;
+
+/** Titre précédé d'un pictogramme (explicite ou déduit du texte). */
+export function heading(text, iconName, { tag = "h3", cls = "section-title" } = {}) {
+  return `<${tag} class="${cls}">${hIcon(iconName || guessIcon(text.replace(/:\w+:|\*\*/g, "")))}<span>${fmt(text)}</span></${tag}>`;
+}
 
 /* ---------------------------------------------------------------- Texte */
 
@@ -92,8 +119,8 @@ function renderBlock(b, ctx) {
   switch (b.t) {
     case "p": return `<div>${para(b.text)}</div>`;
     case "lead": return `<p class="lead">${fmt(b.text)}</p>`;
-    case "summary": return `<div class="summary-box"><span class="eyebrow">En bref</span><p class="lead">${fmt(b.text)}</p></div>`;
-    case "h": return `<h3 class="section-title">${fmt(b.text)}</h3>`;
+    case "summary": return `<div class="summary-box"><span class="eyebrow">${ui("bolt")} En bref</span><p class="lead">${fmt(b.text)}</p></div>`;
+    case "h": return heading(b.text, b.i);
     case "steps":
       return `<ol class="steps">${b.items.map(([t, d]) => `<li><span class="st">${fmt(t)}</span>${d ? `<span class="sd">${fmt(d)}</span>` : ""}</li>`).join("")}</ol>`;
     case "bullets": return `<ul class="bullets">${b.items.filter((i) => typeof i === "string" || visible(i)).map((i) => `<li>${fmt(i.text ?? i)}</li>`).join("")}</ul>`;
@@ -105,9 +132,11 @@ function renderBlock(b, ctx) {
           <div><div class="t">${esc(i.t)}${i.en ? `<span class="en">${esc(i.en)}</span>` : ""}</div><div class="d">${fmt(i.d)}</div></div>
         </div>`).join("")}</div>`;
     case "img": return figure(b.src, b.alt, b.caption, b.credit);
-    case "more":
-      return `<details class="more"${b.open ? " open" : ""}><summary>${esc(b.title)}${ui("chev")}</summary><div class="inner">${renderBlocks(b.blocks, ctx)}</div></details>`;
-    case "card": return `<section class="card">${b.title ? `<h3>${fmt(b.title)}</h3>` : ""}${renderBlocks(b.blocks, ctx)}</section>`;
+    case "more": {
+      const key = `more:${b.title}`;
+      return `<details class="more" data-open-key="${esc(key)}"${b.open || isOpen(key) ? " open" : ""}><summary>${hIcon(b.i || guessIcon(b.title))}<span>${esc(b.title)}</span>${ui("chev")}</summary><div class="inner">${renderBlocks(b.blocks, ctx)}</div></details>`;
+    }
+    case "card": return `<section class="card">${b.title ? heading(b.title, b.i, { cls: "card-title" }) : ""}${renderBlocks(b.blocks, ctx)}</section>`;
     case "table":
       return `<table class="table"><thead><tr>${b.head.map((h) => `<th>${esc(h)}</th>`).join("")}</tr></thead><tbody>${b.rows
         .map((r, i) => `<tr${b.hl === i ? ' class="hl"' : ""}>${r.map((c, j) => `<td${j > 0 && b.num ? ' class="num"' : ""}>${fmt(String(c))}</td>`).join("")}</tr>`)

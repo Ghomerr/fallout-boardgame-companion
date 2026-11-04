@@ -1,7 +1,7 @@
 // Point d'entrée : routeur (hash), barre d'onglets, événements globaux, service worker.
 
 import { ui, toast, closeSheet } from "./ui.js";
-import { state, update, isCoop, subscribe, resetGame, resetSetup } from "./store.js";
+import { state, update, saveSoon, setOpen, wipe, isCoop, subscribe, resetGame, resetSetup } from "./store.js";
 import * as V from "./views.js";
 
 const $ = (id) => document.getElementById(id);
@@ -48,7 +48,17 @@ const currentPath = () => decodeURIComponent(location.hash.replace(/^#\/?/, ""))
 
 let prevPath = null;
 
-function render({ keepScroll = false } = {}) {
+/** Replace la page à la position mémorisée (réessaie quand les images ont fini de charger). */
+function restoreScroll(path) {
+  const y = state.ui.scroll[path] || 0;
+  if (!y) return;
+  const apply = () => { if (currentPath() === path && Math.abs(window.scrollY - y) > 4) window.scrollTo(0, y); };
+  requestAnimationFrame(apply);
+  setTimeout(apply, 350);
+  if (document.readyState !== "complete") addEventListener("load", apply, { once: true });
+}
+
+function render({ keepScroll = false, restore = false } = {}) {
   const path = currentPath();
   const view = resolve(path);
   const el = $("view");
@@ -86,8 +96,10 @@ function render({ keepScroll = false } = {}) {
     void el.offsetWidth;
     el.classList.add("is-entering");
     el.focus({ preventScroll: true });
+    if (restore) restoreScroll(path);
   }
   prevPath = path;
+  if (state.ui.route !== path) { state.ui.route = path; saveSoon(); }
   document.title = `${view.title} · Fallout – Compagnon`;
 }
 
@@ -107,6 +119,7 @@ const ACTIONS = {
     const box = document.querySelector(`#step-${v} .check-more`);
     box.hidden = !box.hidden;
     btn.setAttribute("aria-expanded", String(!box.hidden));
+    setOpen(`setup:${v}`, !box.hidden);
   },
   "reset-setup"() { resetSetup(); },
   pip(v) {
@@ -136,9 +149,8 @@ const ACTIONS = {
   },
   "reset-all"() {
     if (!confirm("Effacer tous vos réglages et votre progression ?")) return;
-    try { localStorage.clear(); } catch { /* rien */ }
-    location.hash = "#/";
-    location.reload();
+    wipe();
+    location.replace(location.pathname);
   },
 };
 
@@ -170,13 +182,19 @@ document.addEventListener("change", (e) => {
   }
 });
 
+// Sections repliables : mémorise lesquelles sont ouvertes (« toggle » ne remonte pas : écoute en capture)
+document.addEventListener("toggle", (e) => {
+  const key = e.target.dataset?.openKey;
+  if (key) setOpen(key, e.target.open);
+}, true);
+
 document.addEventListener("keydown", (e) => {
   if (e.key === "Escape") closeSheet();
 });
 
 $("back-btn").addEventListener("click", () => {
   // Revenir en arrière si on vient de l'application, sinon aller à la page parente
-  if (history.length > 1 && prevPathStack.length > 1) history.back();
+  if (navStack.length > 1) history.back();
   else location.hash = `#/${$("back-btn").dataset.target}`;
 });
 
@@ -209,19 +227,35 @@ document.addEventListener("visibilitychange", () => {
 
 /* ====================================================================== Démarrage */
 
-const prevPathStack = [];
+// Pile de navigation interne : sert à détecter un retour arrière pour retrouver la position de lecture.
+const navStack = [];
 window.addEventListener("hashchange", () => {
   closeSheet();
-  prevPathStack.push(currentPath());
-  render();
+  const path = currentPath();
+  const isBack = navStack.length > 1 && navStack[navStack.length - 2] === path;
+  if (isBack) navStack.pop();
+  else navStack.push(path);
+  render({ restore: isBack });
 });
+
+// Mémorise la position de défilement de chaque page
+addEventListener("scroll", () => {
+  state.ui.scroll[currentPath()] = Math.round(window.scrollY);
+  saveSoon();
+}, { passive: true });
 
 // Re-rendu sur changement d'état, en conservant la position de défilement
 subscribe(() => render({ keepScroll: true }));
 
+// La position est gérée par l'appli (le rendu est asynchrone pour le navigateur).
+if ("scrollRestoration" in history) history.scrollRestoration = "manual";
+
+// Réouverture de l'appli (icône d'accueil, nouvel onglet) : reprendre là où on s'était arrêté.
+if (!location.hash && state.ui.route) history.replaceState(null, "", `#/${state.ui.route}`);
+
 buildTabbar();
-prevPathStack.push(currentPath());
-render();
+navStack.push(currentPath());
+render({ restore: true });
 
 if ("serviceWorker" in navigator && location.protocol !== "file:") {
   window.addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => {}));

@@ -1,7 +1,7 @@
 // Vues de l'application. Chaque vue renvoie { title, html, back?, mount?(root) }.
 
-import { gi, ui, icon, fmt, esc, renderBlocks, callout, figure, stepper, toggle, openSheet, sheetHead, norm, visible } from "./ui.js";
-import { state, update, save, isCoop, influenceTarget, coopTarget } from "./store.js";
+import { gi, ui, icon, fmt, esc, renderBlocks, callout, figure, heading, hIcon, stepper, toggle, openSheet, sheetHead, norm, visible } from "./ui.js";
+import { state, update, save, saveSoon, isOpen, isCoop, influenceTarget, coopTarget } from "./store.js";
 import { ACTIONS, ACTION_BY_ID } from "./data/actions.js";
 import { TOPICS, TOPIC_BY_ID, TOPIC_GROUPS } from "./data/topics.js";
 import { GLOSSARY } from "./data/glossary.js";
@@ -32,7 +32,7 @@ function linkCard(route, t, d, i) {
 }
 
 function links(items, title = "Voir aussi") {
-  return `<section><h3 class="section-title">${esc(title)}</h3><div class="link-list" style="margin-top:12px">${items
+  return `<section>${heading(esc(title), "link")}<div class="link-list" style="margin-top:12px">${items
     .map((r) => { const x = routeInfo(r); return linkCard(r, x.t, x.d, x.i); })
     .join("")}</div></section>`;
 }
@@ -44,7 +44,7 @@ const modeLabel = () => (isCoop() ? "Coopératif" : "Compétitif");
 function settingsCard() {
   const p = state.players;
   return `<section class="card settings-card">
-    <span class="eyebrow">Votre partie</span>
+    <span class="eyebrow">${ui("compass")} Votre partie</span>
     <div class="seg coop" role="group" aria-label="Mode de jeu">
       <button data-action="mode" data-value="comp" aria-pressed="${!isCoop()}">${ui("user")} Compétitif</button>
       <button data-action="mode" data-value="coop" aria-pressed="${isCoop()}">${ui("users")} Coopératif</button>
@@ -67,7 +67,7 @@ export function home() {
     title: "Fallout",
     html: `
       <section class="hero"><div class="in">
-        <span class="eyebrow">Compagnon de jeu</span>
+        <span class="eyebrow">${ui("sparkle")} Compagnon de jeu</span>
         <h2>Survivre aux Terres désolées</h2>
         <p>Tout pour jouer à <strong>Fallout, le jeu de plateau</strong>, sans lire le livret.</p>
       </div></section>
@@ -144,7 +144,7 @@ export function discover() {
             ${s.last ? `<a class="btn block" href="#/mise-en-place">${ui("setup")} Préparer la partie</a>` : ""}
           </article>`).join("")}
       </div>
-      <div class="dots" id="dots">${list.map((_, i) => `<button aria-label="Diapositive ${i + 1}" data-slide="${i}"${i === 0 ? ' aria-current="true"' : ""}></button>`).join("")}</div>
+      <div class="dots" id="dots">${list.map((_, i) => `<button aria-label="Diapositive ${i + 1}" data-slide="${i}"${i === Math.min(state.ui.slide, list.length - 1) ? ' aria-current="true"' : ""}></button>`).join("")}</div>
       <div class="slides-nav">
         <button class="btn ghost" data-slide-nav="-1">${ui("back")} Précédent</button>
         <button class="btn" data-slide-nav="1">Suivant ${ui("next")}</button>
@@ -155,9 +155,12 @@ export function discover() {
       const dots = [...root.querySelectorAll("[data-slide]")];
       const cur = () => Math.round(box.scrollLeft / box.clientWidth);
       const go = (i) => box.scrollTo({ left: Math.max(0, Math.min(list.length - 1, i)) * box.clientWidth, behavior: "smooth" });
+      // Reprend à la dernière diapositive vue
+      requestAnimationFrame(() => { box.scrollLeft = Math.min(state.ui.slide, list.length - 1) * box.clientWidth; });
       box.addEventListener("scroll", () => {
         const c = cur();
         dots.forEach((d, i) => d.setAttribute("aria-current", i === c));
+        if (state.ui.slide !== c) { state.ui.slide = c; saveSoon(); }
       }, { passive: true });
       root.addEventListener("click", (e) => {
         const d = e.target.closest("[data-slide]");
@@ -185,7 +188,7 @@ export function setup() {
     html: `
       ${settingsCard()}
       <section>
-        <div class="turn-head"><h3>${done} / ${steps.length} étapes</h3>
+        <div class="turn-head"><h3 class="card-title">${hIcon("setup")}${done} / ${steps.length} étapes</h3>
           <button class="btn ghost small" data-action="reset-setup">${ui("reset")} Tout décocher</button></div>
         <div class="progress" style="margin-top:10px" role="progressbar" aria-valuenow="${pct}" aria-valuemin="0" aria-valuemax="100"><i style="width:${pct}%"></i></div>
       </section>
@@ -199,15 +202,15 @@ export function setup() {
               <div class="body">
                 <div class="t"><span class="mono muted">${i + 1}.</span> ${esc(s.title)}${s.mode === "coop" ? '<span class="tag">COOP</span>' : ""}</div>
                 <div class="d">${fmt(resolve(s.text))}</div>
-                ${det ? `<button class="check-toggle" data-action="setup-more" data-value="${s.id}" aria-expanded="false">${ui("info")} Détails</button>` : ""}
+                ${det ? `<button class="check-toggle" data-action="setup-more" data-value="${s.id}" aria-expanded="${isOpen(`setup:${s.id}`)}">${ui("info")} Détails</button>` : ""}
               </div>
             </div>
-            ${det ? `<div class="check-more" hidden>${renderBlocks(det, CTX)}</div>` : ""}
+            ${det ? `<div class="check-more"${isOpen(`setup:${s.id}`) ? "" : " hidden"}>${renderBlocks(det, CTX)}</div>` : ""}
           </li>`;
         }).join("")}
       </ol>
       ${done === steps.length
-        ? `<section class="card" style="border-color:var(--green-dim)"><h3>Tout est prêt !</h3><p>Le premier joueur commence. Bonne chance, survivant.</p><a class="btn block" href="#/jouer">${ui("play")} Lancer la partie</a></section>`
+        ? `<section class="card" style="border-color:var(--green-dim)">${heading("Tout est prêt !", "check", { cls: "card-title" })}<p>Le premier joueur commence. Bonne chance, survivant.</p><a class="btn block" href="#/jouer">${ui("play")} Lancer la partie</a></section>`
         : `<a class="btn ghost block" href="#/jouer">${ui("play")} Passer au mode « En jeu »</a>`}`,
   };
 }
@@ -229,7 +232,7 @@ export function play() {
             ${Array.from({ length: n }, (_, i) => `<i class="${i === g.current ? "cur" : ""}${i === g.first ? " first" : ""}" title="Joueur ${i + 1}${i === g.first ? " (premier joueur)" : ""}">${i + 1}</i>`).join("")}
           </div>
         </div>
-        <h3 style="color:#fff">${n > 1 ? `Au tour du joueur ${g.current + 1}` : "À vous de jouer"}</h3>
+        <h3 class="card-title" style="color:#fff">${hIcon("user")}${n > 1 ? `Au tour du joueur ${g.current + 1}` : "À vous de jouer"}</h3>
         <div class="pips">
           ${[0, 1].map((i) => `<button class="pip${g.actions > i ? " used" : ""}" data-action="pip" data-value="${i}" aria-pressed="${g.actions > i}">${ui(g.actions > i ? "check" : "play")} Action ${i + 1}</button>`).join("")}
         </div>
@@ -248,7 +251,7 @@ export function play() {
         : `<p class="small muted">${fmt(`Objectif : **${influenceTarget()} influence** :influence: · [Comment gagner](#/sujet/victoire)`)}</p>`}
 
       <section>
-        <h3 class="section-title">Les 6 actions</h3>
+        ${heading("Les 6 actions", "play")}
         <div class="action-grid" style="margin-top:12px">
           ${ACTIONS.map((a) => `<a class="action-tile" href="#/action/${a.id}">
             ${a.restricted ? `<span class="flag" title="Impossible avec un ennemi actif dans votre case">${ui("warn")}</span>` : ""}
@@ -258,7 +261,7 @@ export function play() {
       </section>
 
       <section>
-        <h3 class="section-title">Pendant la partie</h3>
+        ${heading("Pendant la partie", "clock")}
         <div class="link-list" style="margin-top:12px">
           ${["sujet/combat", "sujet/test", "sujet/fin-manche", "sujet/niveau", "sujet/sante", "sujet/ennemis", "sujet/boutique", "sujet/resultats"]
             .map((r) => { const x = routeInfo(r); return linkCard(r, x.t, x.d, x.i); }).join("")}
@@ -310,16 +313,16 @@ export function rules() {
     title: "Règles",
     html: `
       <p class="lead">Tout le jeu, découpé en petites fiches.</p>
-      <section><h3 class="section-title">Les actions</h3>
+      <section>${heading("Les actions", "play")}
         <div class="action-grid" style="margin-top:12px">
           ${ACTIONS.map((a) => `<a class="action-tile" href="#/action/${a.id}" style="min-height:0"><span class="icon-badge">${icon(a.icon)}</span><span class="t">${a.title}</span></a>`).join("")}
         </div></section>
-      ${TOPIC_GROUPS.map(([g, label]) => `
-        <section><h3 class="section-title">${esc(label)}</h3>
+      ${TOPIC_GROUPS.map(([g, label, gIcon]) => `
+        <section>${heading(esc(label), gIcon)}
           <div class="link-list" style="margin-top:12px">
             ${TOPICS.filter((t) => t.group === g).map((t) => linkCard(`sujet/${t.id}`, t.title, t.short, t.icon)).join("")}
           </div></section>`).join("")}
-      <section><h3 class="section-title">Variantes</h3>
+      <section>${heading("Variantes", "users")}
         <div class="link-list" style="margin-top:12px">
           ${linkCard("coop", "Mode coopératif", "Règles coop non officielles + options", "users")}
         </div></section>`,
@@ -353,7 +356,7 @@ export function action(id) {
     html: `
       ${pageHead(a.title, `Action · ${a.en}`, a.icon)}
       ${renderBlocks([{ t: "summary", text: a.summary }])}
-      <section class="card"><span class="eyebrow">Quand ?</span>
+      <section class="card"><span class="eyebrow">${ui("clock")} Quand ?</span>
         <div class="cond-list">${a.when.map(([k, txt]) => `<div class="cond ${k}">${ui(k === "ok" ? "check" : "close")}<span>${fmt(txt)}</span></div>`).join("")}</div>
       </section>
       ${renderBlocks(a.blocks, CTX)}
@@ -417,15 +420,20 @@ export function glossary(id) {
     title: "Glossaire",
     html: `
       <label class="search">${ui("search")}
-        <input id="gloss-q" type="search" placeholder="Tapez un mot (FR ou EN)…" autocomplete="off" enterkeyhint="search" aria-label="Rechercher un terme">
-        <button id="gloss-clear" aria-label="Effacer" hidden>${ui("close")}</button>
+        <input id="gloss-q" type="search" placeholder="Tapez un mot (FR ou EN)…" autocomplete="off" enterkeyhint="search" aria-label="Rechercher un terme" value="${esc(state.ui.gloss)}">
+        <button id="gloss-clear" aria-label="Effacer"${state.ui.gloss ? "" : " hidden"}>${ui("close")}</button>
       </label>
-      <div class="gloss-list" id="gloss-list">${glossResults("")}</div>`,
+      <div class="gloss-list" id="gloss-list">${glossResults(state.ui.gloss)}</div>`,
     mount(root) {
       const inp = root.querySelector("#gloss-q");
       const list = root.querySelector("#gloss-list");
       const clr = root.querySelector("#gloss-clear");
-      const run = () => { list.innerHTML = glossResults(inp.value); clr.hidden = !inp.value; };
+      const run = () => {
+        list.innerHTML = glossResults(inp.value);
+        clr.hidden = !inp.value;
+        state.ui.gloss = inp.value;
+        saveSoon();
+      };
       inp.addEventListener("input", run);
       clr.addEventListener("click", () => { inp.value = ""; run(); inp.focus(); });
       if (id) openGlossSheet(id);
@@ -456,10 +464,10 @@ export function coop() {
         <button class="btn block" data-action="mode" data-value="coop" style="background:var(--blue);border-color:var(--blue);color:#04182b">${ui("users")} Activer le mode coop</button></section>`}
       ${renderBlocks([{ t: "summary", text: "Tous les survivants jouent **dans le même camp**, alliés à une faction. Toutes les règles de base s'appliquent, sauf ce qui suit." }])}
 
-      <section class="card"><h3>Votre faction alliée</h3>${factionPicker()}
+      <section class="card">${heading("Votre faction alliée", "star", { cls: "card-title" })}${factionPicker()}
         <p class="small muted">${fmt(`Alliée : ${gi(f, f === "star" ? "c-star" : "c-shield")} · Ennemie : ${gi(enemyF, enemyF === "star" ? "c-star" : "c-shield")}`)}</p></section>
 
-      <section class="card"><h3>Objectif</h3>
+      <section class="card">${heading("Objectif", "flag", { cls: "card-title" })}
         <div class="field"><div class="lbl">Cartes Agenda à réunir<small>${state.players} survivant${state.players > 1 ? "s" : ""} · base ${({ 1: 6, 2: 7, 3: 8, 4: 9 })[state.players]} ${state.coop.targetDelta ? `(${state.coop.targetDelta > 0 ? "+" : ""}${state.coop.targetDelta} difficulté)` : ""}</small></div>
           ${stepper("coopTarget", coopTarget(), 1, 20)}</div>
         ${renderBlocks([{ t: "table", head: ["Survivants", "Cartes Agenda"], num: true, hl: state.players - 1, rows: [["Solo", 6], ["2", 7], ["3", 8], ["4", 9]] }])}
@@ -468,7 +476,7 @@ export function coop() {
 
       ${victoryBlock(CTX, { summary: false, coopRules: true })}
 
-      <section class="card"><h3>Le paquet Agenda (10 cartes)</h3>
+      <section class="card">${heading("Le paquet Agenda (10 cartes)", "influence", { cls: "card-title" })}
         ${figure("img/coop-agenda.jpg", "Trois piles de cartes Agenda", "Gauche : :star: · milieu : sans faction (6) · droite : :shield:")}
         ${renderBlocks([{ t: "bullets", items: [
           `Gardez les **6 cartes sans faction** + les **4 de la faction ennemie** (${gi(enemyF)}). Le reste ne sert pas.`,
@@ -477,7 +485,7 @@ export function coop() {
         ] }])}
       </section>
 
-      <section class="card"><h3>Règles optionnelles</h3>
+      <section class="card">${heading("Règles optionnelles", "setup", { cls: "card-title" })}
         <p class="small muted">Cochez celles que vous utilisez : l'application les rappellera au bon moment (combat, exploration…).</p>
         ${COOP_RULES.map(([k, t, d]) => `<div class="field"><div class="lbl"><strong>${t}</strong><small>${fmt(d)}</small></div>${toggle(`coop:${k}`, r[k], t)}</div>`).join("")}
         <div class="field"><div class="lbl"><strong>Variante : réapparition</strong><small>Maison, hors document : un survivant tué réapparaît (règles de base) au lieu de faire perdre l'équipe. Plus indulgent.</small></div>${toggle("coop:respawn", r.respawn, "Réapparition")}</div>
@@ -502,22 +510,22 @@ export function about() {
     title: "À propos",
     back: "",
     html: `
-      <section class="card"><h3>Cette application</h3>
+      <section class="card">${heading("Cette application", "info", { cls: "card-title" })}
         <p>Aide de jeu <strong>non officielle</strong>, faite par des fans, pour jouer à <em>Fallout : le jeu de plateau</em> (Fantasy Flight Games) en français. Elle ne remplace pas le matériel du jeu.</p>
         <p class="small muted">Fonctionne hors connexion une fois chargée. Les réglages sont enregistrés sur cet appareil.</p></section>
-      <section class="card"><h3>Installer sur votre téléphone</h3>
+      <section class="card">${heading("Installer sur votre téléphone", "install", { cls: "card-title" })}
         <ul class="bullets">
           <li><strong>Android (Chrome)</strong> : menu ⋮ → « Installer l'application » / « Ajouter à l'écran d'accueil ».</li>
           <li><strong>iPhone (Safari)</strong> : bouton Partager → « Sur l'écran d'accueil ».</li>
         </ul></section>
-      <section class="card"><h3>Sources</h3>
+      <section class="card">${heading("Sources", "book", { cls: "card-title" })}
         <ul class="bullets">
           <li>Règles : <em>Fallout: The Board Game – Rules Reference</em> (Fantasy Flight Games). Icônes extraites de ce document.</li>
           <li>Coopération : <em>Fallout Board Game Coop Rules v4.0</em> (règles de fans, non officielles).</li>
           <li>Photos du matériel : article « How to play Fallout » de Zatu Games ; photo des dés : critique du jeu par Board Game Quest.</li>
         </ul>
         <p class="small muted">Fallout est une marque de Bethesda Softworks / ZeniMax. Toutes les marques appartiennent à leurs propriétaires.</p></section>
-      <section class="card"><h3>Données</h3>
+      <section class="card">${heading("Données", "data", { cls: "card-title" })}
         <button class="btn ghost block" data-action="reset-all">${ui("reset")} Effacer tous mes réglages</button></section>`,
   };
 }

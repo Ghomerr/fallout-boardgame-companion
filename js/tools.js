@@ -1,7 +1,7 @@
 // Outils interactifs intégrés aux fiches : assistant de combat, de test, piste d'XP, piste de PV.
 
-import { gi, ui, fmt, vatsSvg, stepper, toggle, renderBlocks, callout } from "./ui.js";
-import { state, isCoop, influenceTarget, coopTarget, update } from "./store.js";
+import { gi, ui, fmt, heading, vatsSvg, stepper, toggle, renderBlocks, callout } from "./ui.js";
+import { state, isCoop, influenceTarget, coopTarget, update, toolState, saveSoon } from "./store.js";
 
 /* ====================================================================== Montage */
 
@@ -12,23 +12,30 @@ export function mountTools(root) {
   root.querySelectorAll("[data-tool]").forEach((el) => TOOLS[el.dataset.tool]?.(el));
 }
 
-/** Branche steppers / interrupteurs d'un outil sur un objet d'état local. */
-function bindControls(el, data, rerender) {
+/** Branche steppers / interrupteurs / bouton de remise à zéro d'un outil sur son état persistant. */
+function bindControls(el, data, rerender, defaults) {
+  const changed = () => { saveSoon(); rerender(); };
   el.addEventListener("click", (e) => {
+    if (e.target.closest("[data-tool-reset]")) {
+      Object.assign(data, defaults);
+      return changed();
+    }
     const b = e.target.closest("[data-step]");
     if (!b) return;
     const s = b.closest("[data-stepper]");
     const k = s.dataset.stepper;
     data[k] = Math.min(+s.dataset.max, Math.max(+s.dataset.min, data[k] + +b.dataset.step));
-    rerender();
+    changed();
   });
   el.addEventListener("change", (e) => {
     const t = e.target.closest("[data-toggle]");
     if (!t) return;
     data[t.dataset.toggle] = t.checked;
-    rerender();
+    changed();
   });
 }
+
+const resetBtn = () => `<button class="icon-btn" data-tool-reset aria-label="Remettre à zéro" title="Remettre à zéro">${ui("reset")}</button>`;
 
 const field = (label, control, hint) =>
   `<div class="field"><div class="lbl">${fmt(label)}${hint ? `<small>${fmt(hint)}</small>` : ""}</div>${control}</div>`;
@@ -37,13 +44,15 @@ const line = (a, b) => `<div class="line"><span>${fmt(a)}</span><span>${fmt(Stri
 
 /* ====================================================================== Combat */
 
+const COMBAT_DEFAULTS = {
+  level: 2, armored: false, radiation: false, eRanged: false, loot: false, retreat: false,
+  armor: 0, yRanged: false, adj: false, hp: 16,
+  weaponLetters: 1, rested: false, allies: 0,
+  dots: 1, matches: 1,
+};
+
 function combatTool(el) {
-  const d = {
-    level: 2, armored: false, radiation: false, eRanged: false, loot: false, retreat: false,
-    armor: 0, yRanged: false, adj: false, hp: 16,
-    weaponLetters: 1, rested: false, allies: 0,
-    dots: 1, matches: 1,
-  };
+  const d = toolState("combat", COMBAT_DEFAULTS);
 
   const render = () => {
     const coopRules = isCoop() ? state.coop.rules : {};
@@ -76,10 +85,10 @@ function combatTool(el) {
 
     el.innerHTML = `
       <section class="card tool">
-        <div class="tool-title">${ui("fight")}<h3>Assistant de combat</h3></div>
+        <div class="tool-title">${ui("fight")}<h3>Assistant de combat</h3>${resetBtn()}</div>
         <p class="muted small">Renseignez la situation, lancez vos vrais dés, puis entrez ce que vous voyez. L'assistant fait les comptes.</p>
 
-        <div class="tool-section"><span class="eyebrow">1 · L'ennemi</span>
+        <div class="tool-section"><span class="eyebrow">${gi("human")} 1 · L'ennemi</span>
           ${field("Niveau de l'ennemi", stepper("level", d.level, 1, 6))}
           ${field(":armor: Blindé", toggle("armored", d.armored, "Blindé"), "1 touche de plus pour le tuer")}
           ${field(":radiation: Radiation", toggle("radiation", d.radiation, "Radiation"))}
@@ -88,14 +97,14 @@ function combatTool(el) {
           ${field(":retreat: Repli", toggle("retreat", d.retreat, "Repli"))}
         </div>
 
-        <div class="tool-section"><span class="eyebrow">2 · Vous</span>
+        <div class="tool-section"><span class="eyebrow">${ui("user")} 2 · Vous</span>
           ${field("PV restants avant le combat", stepper("hp", d.hp, 1, 16), "PV − rads")}
           ${field(":armor: Armure de votre tenue", stepper("armor", d.armor, 0, 4))}
           ${field(":ranged: Votre arme est à distance", toggle("yRanged", d.yRanged, "Arme à distance"))}
           ${canAdj ? field("Combat entre deux cases voisines", toggle("adj", d.adj, "Cases voisines"), "Tir à distance d'une case à l'autre") : ""}
         </div>
 
-        <div class="tool-section"><span class="eyebrow">3 · Relances</span>
+        <div class="tool-section"><span class="eyebrow">${ui("reset")} 3 · Relances</span>
           ${field("Lettres de votre arme que vous possédez", stepper("weaponLetters", d.weaponLetters, 0, 4), "1 relance par lettre")}
           ${field(":sun: Défausser « Bien reposé »", toggle("rested", d.rested, "Bien reposé"))}
           ${assist ? field(":users: Alliés dans votre case", stepper("allies", d.allies, 0, 3), "Règle coop « Assistance »") : ""}
@@ -103,7 +112,7 @@ function combatTool(el) {
           <p class="muted small">${fmt("Chaque relance : relancez autant de dés que vous voulez. Gardez de préférence les dés qui touchent l'ennemi **sans** :hit:.")}</p></div>
         </div>
 
-        <div class="tool-section"><span class="eyebrow">4 · Les dés après relances</span>
+        <div class="tool-section"><span class="eyebrow">${ui("dice")} 4 · Les dés après relances</span>
           ${field("Nombre de :hit: visibles", stepper("dots", d.dots, 0, 9), "Sur les 3 dés")}
           ${field("Dés avec une zone pleine en commun avec l'ennemi", stepper("matches", d.matches, 0, 3), "Max 1 touche par dé")}
         </div>
@@ -130,21 +139,23 @@ function combatTool(el) {
       </section>`;
   };
 
-  bindControls(el, d, render);
+  bindControls(el, d, render, COMBAT_DEFAULTS);
   render();
 }
 
 /* ====================================================================== Test */
 
+const TEST_DEFAULTS = { diff: 2, letters: 1, rested: false, allies: 0, dots: 2 };
+
 function testTool(el) {
-  const d = { diff: 2, letters: 1, rested: false, allies: 0, dots: 2 };
+  const d = toolState("test", TEST_DEFAULTS);
   const render = () => {
     const assist = isCoop() && state.coop.rules.assist;
     const rerolls = d.letters + (d.rested ? 1 : 0) + (assist ? d.allies : 0);
     const ok = d.dots >= d.diff;
     el.innerHTML = `
       <section class="card tool">
-        <div class="tool-title">${ui("dice")}<h3>Assistant de test</h3></div>
+        <div class="tool-title">${ui("dice")}<h3>Assistant de test</h3>${resetBtn()}</div>
         <div class="tool-section">
           ${field("Difficulté du test", stepper("diff", d.diff, 1, 6))}
           ${field("Lettres du test que vous possédez", stepper("letters", d.letters, 0, 3), "1 relance par lettre")}
@@ -158,7 +169,7 @@ function testTool(el) {
           <p class="small muted">${fmt(`${d.dots} :hit: pour une difficulté de ${d.diff}. Appliquez le résultat « ${ok ? "succeed" : "fail"} » de la carte.`)}</p></div>
       </section>`;
   };
-  bindControls(el, d, render);
+  bindControls(el, d, render, TEST_DEFAULTS);
   render();
 }
 
@@ -167,24 +178,27 @@ function testTool(el) {
 const LETTERS = ["S", "P", "E", "C", "I", "A", "L"];
 
 function xpTool(el) {
-  const d = { owned: new Set(["S", "P"]), peg: 0, levels: 0, flash: false };
+  // owned : lettres possédées (tableau pour pouvoir être sauvegardé)
+  const d = toolState("xp", { owned: ["S", "P"], peg: 0, levels: 0 });
+  let flash = false;
+  const has = (l) => d.owned.includes(l);
 
   const render = () => {
-    const owned = LETTERS.filter((l) => d.owned.has(l));
+    const owned = LETTERS.filter(has);
     const k = owned.length;
     const toNext = k + 1 - d.peg;
     // Position du pion : 0 = trou de départ, i = sous le i-ème jeton possédé
     const pegLetter = d.peg === 0 ? null : owned[d.peg - 1];
     el.innerHTML = `
-      <section class="card tool${d.flash ? " levelup" : ""}">
+      <section class="card tool${flash ? " levelup" : ""}">
         <div class="tool-title">${ui("xp")}<h3>Simulateur de piste d'XP</h3></div>
         <p class="muted small">Touchez les lettres pour choisir les jetons que vous possédez, puis gagnez de l'XP.</p>
         <div class="xp-track" role="group" aria-label="Piste S.P.E.C.I.A.L.">
           <div class="xp-slot"><div class="xp-token start">départ</div><i class="xp-hole${d.peg === 0 ? " peg" : ""}"></i></div>
           ${LETTERS.map((l) => `
             <div class="xp-slot">
-              <button class="xp-token${d.owned.has(l) ? " on" : ""}" data-letter="${l}" aria-pressed="${d.owned.has(l)}" aria-label="Jeton ${l}">${gi(l)}</button>
-              <i class="xp-hole${d.owned.has(l) ? "" : " off"}${pegLetter === l ? " peg" : ""}"></i>
+              <button class="xp-token${has(l) ? " on" : ""}" data-letter="${l}" aria-pressed="${has(l)}" aria-label="Jeton ${l}">${gi(l)}</button>
+              <i class="xp-hole${has(l) ? "" : " off"}${pegLetter === l ? " peg" : ""}"></i>
             </div>`).join("")}
         </div>
         <div class="result">
@@ -193,7 +207,7 @@ function xpTool(el) {
           ${line("XP avant le prochain niveau", `<b>${toNext}</b>`)}
           ${line("Niveaux gagnés (simulation)", d.levels)}
         </div>
-        ${d.flash ? callout("tip", ["**Niveau supérieur !** Piochez 2 jetons S.P.E.C.I.A.L. et gardez-en un.", "Nouvelle lettre → posez-la (touchez-la ci-dessus pour l'ajouter). Lettre déjà possédée → prenez une **aptitude**."], "Level up") : ""}
+        ${flash ? callout("tip", ["**Niveau supérieur !** Piochez 2 jetons S.P.E.C.I.A.L. et gardez-en un.", "Nouvelle lettre → posez-la (touchez-la ci-dessus pour l'ajouter). Lettre déjà possédée → prenez une **aptitude**."], "Level up") : ""}
         <div class="btn-row">
           <button class="btn" data-xp="1">${ui("plus")} 1 XP</button>
           <button class="btn ghost" data-xp="reset">${ui("reset")} Recommencer</button>
@@ -205,16 +219,19 @@ function xpTool(el) {
     const t = e.target.closest("[data-letter]");
     if (t) {
       const l = t.dataset.letter;
-      if (d.owned.has(l)) { if (d.owned.size > 1) d.owned.delete(l); } else d.owned.add(l);
-      d.peg = Math.min(d.peg, d.owned.size);
-      d.flash = false;
+      if (has(l)) { if (d.owned.length > 1) d.owned = d.owned.filter((x) => x !== l); } else d.owned = [...d.owned, l];
+      d.peg = Math.min(d.peg, d.owned.length);
+      flash = false;
+      saveSoon();
       return render();
     }
     const x = e.target.closest("[data-xp]");
     if (!x) return;
-    if (x.dataset.xp === "reset") Object.assign(d, { peg: 0, levels: 0, flash: false });
-    else if (d.peg >= d.owned.size) Object.assign(d, { peg: 0, levels: d.levels + 1, flash: true });
-    else Object.assign(d, { peg: d.peg + 1, flash: false });
+    flash = false;
+    if (x.dataset.xp === "reset") Object.assign(d, { peg: 0, levels: 0 });
+    else if (d.peg >= d.owned.length) { Object.assign(d, { peg: 0, levels: d.levels + 1 }); flash = true; }
+    else d.peg += 1;
+    saveSoon();
     render();
   });
   render();
@@ -223,7 +240,7 @@ function xpTool(el) {
 /* ====================================================================== PV / rads */
 
 function hpTool(el) {
-  const d = { hp: 16, rads: 0 };
+  const d = toolState("hp", { hp: 16, rads: 0 });
   const render = () => {
     const left = d.hp - d.rads;
     const cells = Array.from({ length: 17 }, (_, i) => {
@@ -248,6 +265,7 @@ function hpTool(el) {
     const r = e.target.closest("[data-range]");
     if (!r) return;
     d[r.dataset.range] = +r.value;
+    saveSoon();
     const pos = r.dataset.range;
     render();
     el.querySelector(`[data-range="${pos}"]`).focus();
@@ -269,7 +287,7 @@ export function combatExample() {
   const dots = (n) => `<span class="hits">${Array.from({ length: n }, () => gi("hit")).join("")}</span>`;
   return `
     <section class="card">
-      <h3>Exemple illustré</h3>
+      ${heading("Exemple illustré", "eye", { cls: "card-title" })}
       <p class="muted small">Faces simplifiées pour l'explication (zones pleines = zones touchées) : comparez-les avec vos vrais dés.</p>
       <div class="vats-row">
         <div class="vats-card enemy">${vatsSvg(enemy, { label: "Ennemi vulnérable au corps et aux jambes" })}<span class="cap">Ennemi niv. 2<br>corps + jambes</span></div>
