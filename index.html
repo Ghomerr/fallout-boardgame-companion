@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Fallout – Compagnon de jeu</title>
+  <meta name="description" content="Aide de jeu en français pour Fallout : le jeu de plateau — mise en place, actions, combat, niveaux, coopération et glossaire.">
+  <meta name="theme-color" content="#0a110c">
+  <meta name="color-scheme" content="dark">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Fallout JdP">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" type="image/png" href="icons/favicon-32.png">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <link rel="preload" href="fonts/oswald.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="css/app.css">
+  <script type="module" src="js/app.js"></script>
+</head>
+<body>
+  <div class="shell">
+    <header class="topbar" id="topbar">
+      <button class="icon-btn" id="back-btn" aria-label="Retour" hidden></button>
+      <h1 class="topbar-title" id="topbar-title">Fallout</h1>
+      <button class="mode-pill" id="mode-pill" aria-label="Changer de mode de jeu"></button>
+    </header>
+
+    <nav class="tabbar" id="tabbar" aria-label="Navigation principale"></nav>
+
+    <main class="view" id="view" tabindex="-1">
+      <noscript><p class="card">Cette application nécessite JavaScript.</p></noscript>
+    </main>
+  </div>
+
+  <div class="sheet-backdrop" id="sheet-backdrop" hidden></div>
+  <section class="sheet" id="sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-title" hidden>
+    <div class="sheet-grip" aria-hidden="true"></div>
+    <div class="sheet-body" id="sheet-body"></div>
+  </section>
+
+  <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+</body>
+</html>
