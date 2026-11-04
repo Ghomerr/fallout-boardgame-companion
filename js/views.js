@@ -65,6 +65,7 @@ function settingsCard() {
 export function home() {
   return {
     title: "Fallout",
+    icon: "home",
     html: `
       <section class="hero"><div class="in">
         <span class="eyebrow">${ui("sparkle")} Compagnon de jeu</span>
@@ -127,6 +128,7 @@ export function discover() {
   const list = slides();
   return {
     title: "Le jeu en 2 min",
+    icon: "sparkle",
     back: "",
     html: `
       <div class="slides" id="slides" aria-roledescription="carrousel">
@@ -185,6 +187,7 @@ export function setup() {
   const pct = Math.round((done / steps.length) * 100);
   return {
     title: "Mise en place",
+    icon: "setup",
     html: `
       ${settingsCard()}
       <section>
@@ -224,6 +227,7 @@ export function play() {
   const isLast = g.current === order[n - 1];
   return {
     title: "En jeu",
+    icon: "play",
     html: `
       <section class="card turn-card">
         <div class="turn-head">
@@ -311,6 +315,7 @@ export function endRoundSheet() {
 export function rules() {
   return {
     title: "Règles",
+    icon: "book",
     html: `
       <p class="lead">Tout le jeu, découpé en petites fiches.</p>
       <section>${heading("Les actions", "play")}
@@ -341,6 +346,7 @@ export function topic(id) {
   if (!t) return notFound();
   return {
     title: t.title,
+    icon: t.icon,
     back: "regles",
     html: `${pageHead(t.title, t.en, t.icon)}${renderBlocks(t.blocks, CTX)}${t.links ? links(t.links) : ""}`,
     mount: mountTools,
@@ -352,6 +358,7 @@ export function action(id) {
   if (!a) return notFound();
   return {
     title: a.title,
+    icon: a.icon,
     back: "jouer",
     html: `
       ${pageHead(a.title, `Action · ${a.en}`, a.icon)}
@@ -418,6 +425,7 @@ export function openGlossSheet(id) {
 export function glossary(id) {
   return {
     title: "Glossaire",
+    icon: "search",
     html: `
       <label class="search">${ui("search")}
         <input id="gloss-q" type="search" placeholder="Tapez un mot (FR ou EN)…" autocomplete="off" enterkeyhint="search" aria-label="Rechercher un terme" value="${esc(state.ui.gloss)}">
@@ -457,6 +465,7 @@ export function coop() {
   const enemyF = f === "star" ? "shield" : "star";
   return {
     title: "Mode coopératif",
+    icon: "users",
     back: "",
     html: `
       ${pageHead("Mode coopératif", "Fallout Board Game Coop Rules v4 · non officiel", "users")}
@@ -508,6 +517,7 @@ export function coop() {
 export function about() {
   return {
     title: "À propos",
+    icon: "info",
     back: "",
     html: `
       <section class="card">${heading("Cette application", "info", { cls: "card-title" })}
@@ -531,5 +541,5 @@ export function about() {
 }
 
 export function notFound() {
-  return { title: "Introuvable", back: "", html: `<div class="empty"><p>Cette page n'existe pas.</p><a class="btn" href="#/">Accueil</a></div>` };
+  return { title: "Introuvable", icon: "help", back: "", html: `<div class="empty"><p>Cette page n'existe pas.</p><a class="btn" href="#/">Accueil</a></div>` };
 }

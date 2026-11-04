@@ -1,6 +1,6 @@
 // Point d'entrée : routeur (hash), barre d'onglets, événements globaux, service worker.
 
-import { ui, toast, closeSheet } from "./ui.js";
+import { ui, esc, hIcon, toast, closeSheet } from "./ui.js";
 import { state, update, saveSoon, setOpen, wipe, isCoop, subscribe, resetGame, resetSetup } from "./store.js";
 import * as V from "./views.js";
 
@@ -72,14 +72,15 @@ function render({ keepScroll = false, restore = false } = {}) {
   view.mount?.(page);
 
   // Barre du haut
-  $("topbar-title").textContent = view.title;
+  $("topbar-title").innerHTML = `${hIcon(view.icon || "sparkle")}<span>${esc(view.title)}</span>`;
   const back = $("back-btn");
   back.hidden = view.back === undefined;
   back.dataset.target = view.back ?? "";
 
   const pill = $("mode-pill");
   pill.classList.toggle("is-coop", isCoop());
-  pill.innerHTML = `${ui(isCoop() ? "users" : "user")}${isCoop() ? "Coop" : "Compét."} · ${state.players}J`;
+  pill.innerHTML = `${ui(isCoop() ? "users" : "user")}<span class="pill-txt">${isCoop() ? "Coop" : "Compét."} · </span>${state.players}J`;
+  pill.title = `Mode ${isCoop() ? "coopératif" : "compétitif"}, ${state.players} joueur${state.players > 1 ? "s" : ""} — toucher pour changer de mode`;
 
   // Onglets
   const active = tabFor(path);

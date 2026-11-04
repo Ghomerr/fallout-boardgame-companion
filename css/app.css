@@ -100,10 +100,12 @@ kbd, .mono { font-family: var(--font-mono); }
 }
 .topbar-title {
   flex: 1; min-width: 0;
+  display: flex; align-items: center; gap: 10px;
   font-size: 1.2rem; text-transform: uppercase; color: var(--green);
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   text-shadow: 0 0 12px rgba(108,245,143,.35);
 }
+.topbar-title > span:last-child { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.topbar-title .h-ico { text-shadow: none; }
 #back-btn:not([hidden]) + .topbar-title { margin-left: -4px; }
 .topbar:has(#back-btn:not([hidden])) { padding-left: 4px; }
 
@@ -126,6 +128,8 @@ kbd, .mono { font-family: var(--font-mono); }
 }
 .mode-pill svg { width: 18px; height: 18px; }
 .mode-pill.is-coop { color: var(--blue); border-color: rgba(111,188,255,.45); }
+/* Écran étroit : la pastille se réduit à l'icône + nombre de joueurs pour laisser la place au titre */
+@media (max-width: 420px) { .mode-pill { padding: 0 10px; gap: 4px; } .mode-pill .pill-txt { display: none; } }
 
 .tabbar {
   position: fixed; left: 0; right: 0; bottom: 0; z-index: 20;
