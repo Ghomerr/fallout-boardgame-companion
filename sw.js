@@ -1,7 +1,7 @@
 // Service worker : met toute l'application en cache pour un usage hors connexion.
 // Pensez à incrémenter VERSION à chaque déploiement.
 
-const VERSION = "v2";
+const VERSION = "v3";
 const CACHE = `fallout-companion-${VERSION}`;
 
 const ASSETS = [
@@ -28,6 +28,7 @@ const ASSETS = [
   "icons/apple-touch-icon.png",
   "icons/favicon-32.png",
   "img/hero.jpg",
+  "img/qr.svg",
   "img/photo-cartes.jpg",
   "img/photo-special.jpg",
   "img/photo-tuiles.jpg",

@@ -626,6 +626,16 @@ mark { background: rgba(108,245,143,.25); color: #fff; border-radius: 3px; paddi
 .sheet-body > * + * { margin-top: 14px; }
 .sheet-head { display: flex; align-items: center; gap: 12px; }
 .sheet-head h2 { flex: 1; font-size: 1.35rem; }
+.share { text-align: center; }
+.share .qr {
+  display: block; width: min(260px, 70vw); height: auto; aspect-ratio: 1;
+  margin: 4px auto 14px; padding: 8px;
+  background: #fff; border-radius: 14px;
+  box-shadow: 0 0 24px rgba(108,245,143,.25);
+}
+.share p { margin: 0 0 6px; }
+.share-url { display: inline-block; max-width: 100%; margin-bottom: 16px; color: var(--green); font-family: var(--font-mono); font-size: .9rem; overflow-wrap: anywhere; }
+.share .btn { white-space: nowrap; }
 @keyframes sheet-up { from { transform: translateY(100%); } }
 @keyframes fade { from { opacity: 0; } }
 

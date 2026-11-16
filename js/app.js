@@ -1,10 +1,12 @@
 // Point d'entrée : routeur (hash), barre d'onglets, événements globaux, service worker.
 
-import { ui, esc, hIcon, toast, closeSheet } from "./ui.js";
+import { ui, esc, hIcon, toast, openSheet, closeSheet, sheetHead } from "./ui.js";
 import { state, update, saveSoon, setOpen, wipe, isCoop, subscribe, resetGame, resetSetup } from "./store.js";
 import * as V from "./views.js";
 
 const $ = (id) => document.getElementById(id);
+
+const APP_URL = "https://ghomerr.github.io/fallout-boardgame-companion/";
 
 /* ====================================================================== Routes */
 
@@ -107,6 +109,40 @@ function render({ keepScroll = false, restore = false } = {}) {
 function buildTabbar() {
   $("tabbar").innerHTML = TABS.map((t) => `<a class="tab" href="#/${t.route}" data-route="${t.route}">${ui(t.icon)}<span>${t.label}</span></a>`).join("");
   $("back-btn").innerHTML = ui("back");
+  $("share-btn").innerHTML = ui("qr");
+}
+
+/* ====================================================================== Partage */
+
+function openShareSheet() {
+  openSheet(`${sheetHead("Partager l'application", "qr")}
+    <div class="share">
+      <img class="qr" src="img/qr.svg" alt="QR code vers ${APP_URL}" width="240" height="240">
+      <p class="muted">Scannez ce code pour ouvrir le compagnon de jeu sur un autre appareil.</p>
+      <a class="share-url" href="${APP_URL}" target="_blank" rel="noopener">${esc(APP_URL.replace(/^https:\/\/|\/$/g, ""))}</a>
+      <div class="btn-row">
+        ${navigator.share ? `<button class="btn ghost" data-action="share-link">${ui("share")} Partager</button>` : ""}
+        <button class="btn" data-action="copy-link">${ui("copy")} Copier le lien</button>
+      </div>
+    </div>`);
+}
+
+async function copyLink() {
+  try {
+    await navigator.clipboard.writeText(APP_URL);
+    return true;
+  } catch {
+    // Repli pour les contextes non sécurisés (fichier local, http).
+    const t = document.createElement("textarea");
+    t.value = APP_URL;
+    t.style.cssText = "position:fixed;opacity:0";
+    $("sheet").append(t);
+    t.select();
+    let ok = false;
+    try { ok = document.execCommand("copy"); } catch { ok = false; }
+    t.remove();
+    return ok;
+  }
 }
 
 /* ====================================================================== Actions globales */
@@ -148,6 +184,8 @@ const ACTIONS = {
   "reset-game"() {
     if (confirm("Remettre la manche, les tours et les compteurs à zéro ?")) { resetGame(); toast("Nouvelle partie"); }
   },
+  async "copy-link"() { toast((await copyLink()) ? "Lien copié" : "Copie impossible sur cet appareil"); },
+  "share-link"() { navigator.share({ title: "Fallout – Compagnon de jeu", url: APP_URL }).catch(() => {}); },
   "reset-all"() {
     if (!confirm("Effacer tous vos réglages et votre progression ?")) return;
     wipe();
@@ -198,6 +236,8 @@ $("back-btn").addEventListener("click", () => {
   if (navStack.length > 1) history.back();
   else location.hash = `#/${$("back-btn").dataset.target}`;
 });
+
+$("share-btn").addEventListener("click", openShareSheet);
 
 $("mode-pill").addEventListener("click", () => {
   ACTIONS.mode(isCoop() ? "comp" : "coop");
